@@ -763,6 +763,7 @@ static void help(const char *progname)
 	fprintf(stderr, "  -c                    do not write flash, only verify (`check')\n");
 	fprintf(stderr, "  -S                    perform SRAM programming\n");
 	fprintf(stderr, "  -t                    just read the flash ID sequence\n");
+	fprintf(stderr, "  -g                    don't reset FPGA in background programming mode\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Erase mode (only meaningful in default mode):\n");
 	fprintf(stderr, "  [default]             erase aligned chunks of 64kB in write mode\n");
@@ -812,6 +813,7 @@ int main(int argc, char **argv)
 	bool erase_mode = false;
 	bool bulk_erase = false;
 	bool dont_erase = false;
+	bool dont_reset = false;
 	bool prog_sram = false;
 	bool test_mode = false;
 	bool disable_protect = false;
@@ -938,6 +940,9 @@ int main(int argc, char **argv)
 			break;
 		case 't': /* just read flash id */
 			test_mode = true;
+			break;
+		case 'g': /* don't reset */
+			dont_reset = true;
 			break;
 		case 'v': /* provide verbose output */
 			verbose = true;
@@ -1111,13 +1116,16 @@ int main(int argc, char **argv)
 
 	if (test_mode)
 	{
-		/* Reset ECP5 to release SPI interface */
-		ecp_jtag_cmd8(ISC_ENABLE,0);
-		usleep(10000);
-		ecp_jtag_cmd8(ISC_ERASE,0);
-		usleep(10000);
-		ecp_jtag_cmd(ISC_DISABLE);
-
+		if (dont_reset == false)
+		{
+			/* Reset ECP5 to release SPI interface */
+			fprintf(stderr, "reset..\n");
+			ecp_jtag_cmd8(ISC_ENABLE,0);
+			usleep(10000);
+			ecp_jtag_cmd8(ISC_ERASE,0);
+			usleep(10000);
+			ecp_jtag_cmd(ISC_DISABLE);
+		}
 		/* Put device into SPI bypass mode */
 		enter_spi_background_mode();
 
@@ -1171,12 +1179,14 @@ int main(int argc, char **argv)
 		// Reset
 		// ---------------------------------------------------------
 
-		fprintf(stderr, "reset..\n");
-		/* Reset ECP5 to release SPI interface */
-		ecp_jtag_cmd8(ISC_ENABLE, 0);
-		ecp_jtag_cmd8(ISC_ERASE, 0);
-		ecp_jtag_cmd8(ISC_DISABLE, 0);
-
+		if (dont_reset == false)
+		{
+			fprintf(stderr, "reset..\n");
+			/* Reset ECP5 to release SPI interface */
+			ecp_jtag_cmd8(ISC_ENABLE, 0);
+			ecp_jtag_cmd8(ISC_ERASE, 0);
+			ecp_jtag_cmd8(ISC_DISABLE, 0);
+		}
 		/* Put device into SPI bypass mode */
 		enter_spi_background_mode();
 
